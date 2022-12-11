@@ -1,7 +1,6 @@
 package ru.netology.nmedia.viewmodel
 
 import android.app.Application
-import android.util.Log
 import androidx.lifecycle.AndroidViewModel
 import androidx.lifecycle.LiveData
 import androidx.lifecycle.MutableLiveData
@@ -51,6 +50,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun save() {
+        _data.postValue(FeedModel(loading = true))
         edited.value?.let {
             repository.save(it, object : PostRepository.Callback<Post> {
                 override fun onSuccess(value: Post) {
@@ -58,7 +58,7 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
                 }
 
                 override fun onError(e: Exception) {
-                    // todo - show error
+                    _data.postValue(FeedModel(error = true))
                 }
             })
 
@@ -79,29 +79,23 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
     }
 
     fun removeById(id: Long) {
-        // Оптимистичная модель
-        val old = _data.value?.posts.orEmpty()
-        _data.postValue(
-            _data.value?.copy(posts = _data.value?.posts.orEmpty()
-                .filter { it.id != id }
-            )
-        )
-
+        _data.postValue(FeedModel(loading = true))
+        val old = data.value?.posts.orEmpty()
         repository.removeById(id, object : PostRepository.Callback<Unit> {
             override fun onSuccess(value: Unit) {
-                Log.d("POST VM", "the post has removed successfully")
+                val new = old.filter { it.id != id }
+                _data.postValue(_data.value?.copy(posts = new))
             }
 
             override fun onError(e: Exception) {
-                _data.postValue(_data.value?.copy(posts = old))
+                _data.postValue(FeedModel(error = true))
             }
         })
     }
 
     fun likeById(post: Post) {
+        _data.postValue(FeedModel(loading = true))
         val old = data.value?.posts.orEmpty()
-
-
         if (post.likedByMe) repository.unlikeById(post.id, object : PostRepository.Callback<Post> {
             override fun onSuccess(value: Post) {
                 val new = old.map { if (it.id == post.id) value else it }
@@ -109,9 +103,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onError(e: Exception) {
-                // todo - show error
+                _data.postValue(FeedModel(error = true))
             }
-
         })
         else repository.likeById(post.id, object : PostRepository.Callback<Post> {
             override fun onSuccess(value: Post) {
@@ -120,9 +113,8 @@ class PostViewModel(application: Application) : AndroidViewModel(application) {
             }
 
             override fun onError(e: Exception) {
-                // todo - show error
+                _data.postValue(FeedModel(error = true))
             }
-
         })
     }
 }
