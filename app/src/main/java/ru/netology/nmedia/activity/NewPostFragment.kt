@@ -8,7 +8,10 @@ import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.fragment.app.viewModels
 import androidx.navigation.fragment.findNavController
+import com.google.android.material.snackbar.Snackbar
+import ru.netology.nmedia.R
 import ru.netology.nmedia.databinding.FragmentNewPostBinding
+import ru.netology.nmedia.model.FeedModelState
 import ru.netology.nmedia.util.AndroidUtils
 import ru.netology.nmedia.util.StringArg
 import ru.netology.nmedia.viewmodel.PostViewModel
@@ -46,9 +49,16 @@ class NewPostFragment : Fragment() {
             viewModel.loadPosts()
             findNavController().navigateUp()
         }
-        viewModel.data.observe(viewLifecycleOwner) { state ->
-            binding.loader.isVisible = state.loading
-            binding.error.isVisible = state.error
+        viewModel.dataState.observe(viewLifecycleOwner) { state ->
+            binding.loader.isVisible = state is FeedModelState.Loading
+            if (state is FeedModelState.Error) {
+                Snackbar.make(binding.root, R.string.error_loading, Snackbar.LENGTH_SHORT)
+                    .setAction(R.string.retry_loading) {
+                        viewModel.changeContent(binding.edit.text.toString())
+                        viewModel.save()
+                        AndroidUtils.hideKeyboard(requireView())
+                    }.show()
+            }
         }
         return binding.root
     }
